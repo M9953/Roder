@@ -84,6 +84,7 @@
       var appSrc = `
 const { useState, useEffect, useRef } = React;
 
+
 // ── Storage helpers ──────────────────────────────────────────────────────────
 const STORE_KEY = "wws_data_v1";
 const load = () => {
@@ -599,8 +600,13 @@ function Products({ data, setData }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
               {p.description && <div style={{ fontSize: 12, color: C.textSub, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.description}</div>}
-              <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "baseline", flexWrap: "wrap" }}>
                 <span style={{ fontWeight: 700, color: C.blue, fontSize: 15 }}>{fmt(p.price)}</span>
+                {p.ek != null && p.ek > 0 && (
+                  <span style={{ fontSize: 11, color: C.textSub, fontWeight: 500 }}>EK {fmt(p.ek)}</span>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
                 {p.category && <Badge label={p.category} color="amber" />}
                 {p.brand && <Badge label={p.brand} color="blue" />}
                 {p.variants && p.variants.length > 0 && <Badge label={\`🎨 \${p.variants.length}\`} color="green" />}
@@ -697,6 +703,10 @@ function Orders({ data, setData }) {
     const prod = data.products.find(p => p.id === pid);
     if (prod) {
       setItemEk(prod.ek != null && prod.ek !== 0 ? String(prod.ek) : "");
+      // propose the article's sell price as the customer-facing price
+      setItemCustomer(prod.price != null && prod.price !== 0 ? String(prod.price) : "");
+    } else {
+      setItemEk(""); setItemCustomer("");
     }
   };
 
@@ -712,13 +722,17 @@ function Orders({ data, setData }) {
   const sumEk = (items) => items.reduce((s, i) => s + i.qty * (i.ek || 0), 0);
   const sumAgent = (items) => items.reduce((s, i) => s + i.qty * (i.agentPrice || 0), 0);
   const sumCustomer = (items) => items.reduce((s, i) => s + i.qty * (i.customerPrice || 0), 0);
-  const calcTotal = (items) => sumAgent(items);              // your revenue (agent pays this)
-  const myMargin = (items) => sumAgent(items) - sumEk(items);    // your profit
+  // Revenue depends on whether there's an agent:
+  //  - via agent: you receive the agent price
+  //  - direct customer: you receive the customer price
+  const revenueOf = (items, hasAgent) => hasAgent ? sumAgent(items) : sumCustomer(items);
+  const calcTotal = (items) => revenueOf(items, customerHasAgent);
+  const myMargin = (items) => revenueOf(items, customerHasAgent) - sumEk(items);
   const agentMargin = (items) => sumCustomer(items) - sumAgent(items); // agent's profit
 
   const openNew = () => {
     setForm({ customerId: data.customers[0]?.id || "", date: today(), shipStatus: "ontheway", payStatus: "unpaid", paidAmount: 0, items: [], notes: "", trackingCode: "" });
-    setItemProd(data.products[0]?.id || "");
+    setItemProd("");
     setItemQty("1");
     setItemEk(""); setItemAgent(""); setItemCustomer("");
     setModal("new");
@@ -863,6 +877,7 @@ function Orders({ data, setData }) {
             {/* Add-item form */}
             <div style={{ background: C.amberLight, borderRadius: 10, padding: "10px 12px", marginTop: 4 }}>
               <Select value={itemProd} onChange={onPickProduct}>
+                <option value="">— Artikel wählen —</option>
                 {data.products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </Select>
               <div style={{ display: "flex", gap: 8 }}>
