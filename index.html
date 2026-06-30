@@ -320,7 +320,6 @@ const Icon = ({ name, size = 22, color = "currentColor" }) => {
 // ── STATUS MAPS ───────────────────────────────────────────────────────────────
 const SHIP_STATUS = [
   { value: "ontheway", label: "Auf dem Weg", color: "amber" },
-  { value: "ingermany", label: "In Deutschland", color: "blue" },
   { value: "arrived", label: "Angekommen", color: "blue" },
   { value: "completed", label: "Kunde erhalten / Abgeschlossen", color: "green" },
 ];
@@ -862,15 +861,29 @@ function Orders({ data, setData }) {
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{it.qty}× {it.name}</div>
                   <button onClick={() => removeItem(i)} style={{ background: "none", border: "none", color: C.red, fontSize: 20, cursor: "pointer", lineHeight: 1 }}>×</button>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 8, fontSize: 11 }}>
-                  <div><div style={{ color: C.textSub }}>EK</div><div style={{ fontWeight: 700 }}>{fmt((it.ek||0))}</div></div>
-                  <div><div style={{ color: C.textSub }}>→ Agent</div><div style={{ fontWeight: 700, color: C.sunset }}>{fmt((it.agentPrice||0))}</div></div>
-                  <div><div style={{ color: C.textSub }}>Agent→Kunde</div><div style={{ fontWeight: 700 }}>{fmt((it.customerPrice||0))}</div></div>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, paddingTop: 6, borderTop: \`1px solid \${C.greyLight}\` }}>
-                  <span style={{ color: C.green, fontWeight: 700 }}>Deine Marge: {fmt(it.qty * ((it.agentPrice||0)-(it.ek||0)))}</span>
-                  <span style={{ color: C.textSub, fontWeight: 600 }}>Agent: {fmt(it.qty * ((it.customerPrice||0)-(it.agentPrice||0)))}</span>
-                </div>
+                {customerHasAgent ? (
+                  <>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 8, fontSize: 11 }}>
+                      <div><div style={{ color: C.textSub }}>EK</div><div style={{ fontWeight: 700 }}>{fmt((it.ek||0))}</div></div>
+                      <div><div style={{ color: C.textSub }}>→ Agent</div><div style={{ fontWeight: 700, color: C.sunset }}>{fmt((it.agentPrice||0))}</div></div>
+                      <div><div style={{ color: C.textSub }}>Agent→Kunde</div><div style={{ fontWeight: 700 }}>{fmt((it.customerPrice||0))}</div></div>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, paddingTop: 6, borderTop: \`1px solid \${C.greyLight}\` }}>
+                      <span style={{ color: C.green, fontWeight: 700 }}>Deine Marge: {fmt(it.qty * ((it.agentPrice||0)-(it.ek||0)))}</span>
+                      <span style={{ color: C.textSub, fontWeight: 600 }}>Agent: {fmt(it.qty * ((it.customerPrice||0)-(it.agentPrice||0)))}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 8, fontSize: 11 }}>
+                      <div><div style={{ color: C.textSub }}>EK</div><div style={{ fontWeight: 700 }}>{fmt((it.ek||0))}</div></div>
+                      <div><div style={{ color: C.textSub }}>An Kunde</div><div style={{ fontWeight: 700, color: C.sunset }}>{fmt((it.customerPrice||0))}</div></div>
+                    </div>
+                    <div style={{ marginTop: 8, fontSize: 11, paddingTop: 6, borderTop: \`1px solid \${C.greyLight}\` }}>
+                      <span style={{ color: C.green, fontWeight: 700 }}>Dein Gewinn: {fmt(it.qty * ((it.customerPrice||0)-(it.ek||0)))}</span>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
 
@@ -884,11 +897,13 @@ function Orders({ data, setData }) {
                 <div style={{ flex: 1 }}><Input label="Menge" type="number" value={itemQty} onChange={setItemQty} min="1" /></div>
                 <div style={{ flex: 1 }}><Input label="EK (€)" type="number" step="0.01" value={itemEk} onChange={setItemEk} placeholder="0,00" /></div>
               </div>
-              {customerHasAgent && (
+              {customerHasAgent ? (
                 <div style={{ display: "flex", gap: 8 }}>
                   <div style={{ flex: 1 }}><Input label="Preis an Agent (€)" type="number" step="0.01" value={itemAgent} onChange={setItemAgent} placeholder="0,00" /></div>
                   <div style={{ flex: 1 }}><Input label="Agent → Kunde (€)" type="number" step="0.01" value={itemCustomer} onChange={setItemCustomer} placeholder="0,00" /></div>
                 </div>
+              ) : (
+                <div><Input label="Verkaufspreis an Kunde (€)" type="number" step="0.01" value={itemCustomer} onChange={setItemCustomer} placeholder="0,00" /></div>
               )}
               <Btn small full onClick={addItem}>＋ Position hinzufügen</Btn>
             </div>
@@ -898,18 +913,28 @@ function Orders({ data, setData }) {
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
                   <span style={{ color: C.textSub }}>Wareneinsatz (EK)</span><span style={{ fontWeight: 600 }}>{fmt(sumEk(form.items))}</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
-                  <span style={{ color: C.textSub }}>Du erhältst vom Agent</span><span style={{ fontWeight: 700, color: C.sunset }}>{fmt(sumAgent(form.items))}</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 8 }}>
-                  <span style={{ color: C.textSub }}>Agent kassiert vom Kunden</span><span style={{ fontWeight: 600 }}>{fmt(sumCustomer(form.items))}</span>
-                </div>
+                {customerHasAgent ? (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                      <span style={{ color: C.textSub }}>Du erhältst vom Agent</span><span style={{ fontWeight: 700, color: C.sunset }}>{fmt(sumAgent(form.items))}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 8 }}>
+                      <span style={{ color: C.textSub }}>Agent kassiert vom Kunden</span><span style={{ fontWeight: 600 }}>{fmt(sumCustomer(form.items))}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 8 }}>
+                    <span style={{ color: C.textSub }}>Verkauf an Kunde</span><span style={{ fontWeight: 700, color: C.sunset }}>{fmt(sumCustomer(form.items))}</span>
+                  </div>
+                )}
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, paddingTop: 8, borderTop: \`1.5px solid \${C.greyLight}\` }}>
                   <span style={{ fontWeight: 700, color: C.green }}>Dein Gewinn</span><span style={{ fontWeight: 800, color: C.green }}>{fmt(myMargin(form.items))}</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginTop: 4 }}>
-                  <span style={{ color: C.textSub }}>Marge des Agenten</span><span style={{ fontWeight: 600, color: C.textSub }}>{fmt(agentMargin(form.items))}</span>
-                </div>
+                {customerHasAgent && (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginTop: 4 }}>
+                    <span style={{ color: C.textSub }}>Marge des Agenten</span><span style={{ fontWeight: 600, color: C.textSub }}>{fmt(agentMargin(form.items))}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
